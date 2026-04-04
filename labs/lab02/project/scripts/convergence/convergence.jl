@@ -1,0 +1,40 @@
+﻿# # Исследование сходимости оценки вероятности
+
+using DrWatson
+@quickactivate "project"
+using Distributions, Plots, Statistics, Random, JLD2
+
+lambda = 5.0
+theor_prob = 1 - cdf(Poisson(lambda), 10)
+sample_sizes = [10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000]
+Random.seed!(123)
+
+estimates = Float64[]
+println("Вычисление оценок вероятности...")
+for n in sample_sizes
+    hourly_sample = rand(Poisson(lambda), n)
+    emp_prob = count(hourly_sample .> 10) / n
+    push!(estimates, emp_prob)
+    println("n = " * string(n) * ": оценка = " * string(emp_prob))
+end
+
+p = plot(sample_sizes, estimates,
+    xscale = :log10,
+    marker = :circle,
+    label = "Эмпирическая оценка",
+    xlabel = "Объём выборки (часы)",
+    ylabel = "Оценка вероятности P(>10)",
+    legend = :bottomright)
+hline!(p, [theor_prob],
+    label = "Теоретическое значение",
+    ls = :dash, lw = 2, color = :red)
+title!(p, "Сходимость оценки вероятности P(>10)")
+
+plot_path = plotsdir("convergence.png")
+savefig(p, plot_path)
+println("График сохранён в " * plot_path)
+
+data_path = datadir("convergence", "convergence_data.jld2")
+mkpath(datadir("convergence"))
+@save data_path sample_sizes estimates lambda theor_prob
+println("Данные сохранены в " * data_path)
